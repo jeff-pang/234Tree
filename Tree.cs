@@ -28,15 +28,15 @@ namespace _234Tree
             while(curr!=null)
             {
                 //If we encounter a node with 3 keys, restructure the node, pushing the middle key upwards, 
-                if (curr.KeyCount == 3)
+                if (curr.Keys.Count == 3)
                 {
                     if (parent == null)//the only time when the parent is null is when we are at the root node
                     {
                         ulong k=curr.Pop(1).Value;
                         Node newRoot = new Node(k);
                         Node[] newNodes = curr.Split();
-                        newRoot.SetEdge(0, newNodes[0]);
-                        newRoot.SetEdge(1, newNodes[1]);
+                        newRoot.InsertEdge(newNodes[0]);
+                        newRoot.InsertEdge(newNodes[1]);
                         Root = newRoot;//make the new subtree's root node the entire tree's root node
                         //curr now points to the left node
 
@@ -56,8 +56,8 @@ namespace _234Tree
                         //int pos0=parent.FindEdgePosition(newNodes[0].Keys[0].Value);
                         //parent.SetEdge(pos0, newNodes[0]);
 
-                        int pos1 = parent.FindEdgePosition(newNodes[1].Keys[0].Value);
-                        parent.SetEdge(pos1, newNodes[1]);
+                        int pos1 = parent.FindEdgePosition(newNodes[1].Keys[0]);
+                        parent.InsertEdge(newNodes[1]);
 
                         int posCurr=parent.FindEdgePosition(value);
                         curr=parent.GetEdge(posCurr);
@@ -69,6 +69,182 @@ namespace _234Tree
                 if(curr==null)//leave node
                 {
                     parent.Push(value);
+                }
+            }
+        }
+
+        public Node Find(ulong k)
+        {
+            Node curr = Root;
+
+            while (curr != null)
+            {
+                if(curr.HasKey(k)>=0)
+                {
+                    return curr;
+                }
+                else
+                {
+                    int p=curr.FindEdgePosition(k);
+                    curr=curr.GetEdge(p);
+                }
+            }
+
+            return null;
+        }
+
+        public void Remove(ulong k)
+        {
+            //1 if in the leaf node, simply remove it.
+            //2 as we encounter 1 key nodes,
+            // a) pull the key from the siblings if they have 2 or more keys, via rotation
+            // b) if both siblings have only 1 key, the parent (except if it is root) will always have 2 or more keys, 
+            //    so pull a key from parent and fuse with it's sibling.
+            // c) if siblings have only 1 key and parent is a 1 key root node, fuse all 3 nodes into 1
+
+            Node curr = Root;
+            Node parent = null;
+            while (curr != null)
+            {
+                //check for 1 key nodes
+                if(curr.Keys.Count==1)
+                {
+                    if (curr!=Root)//skip root node
+                    {
+                        ulong cK=curr.Keys[0];
+                        int edgePos=parent.FindEdgePosition(cK);
+                        
+                        bool? takeRight = null;
+                        Node sibling = null;
+
+                        if (edgePos > -1)//edge is found
+                        {
+                            if (edgePos < 3)//use right sibling if it is not the right most node
+                            {
+                                sibling = parent.GetEdge(edgePos + 1);
+                                if (sibling.Keys.Count > 1)
+                                {
+                                    takeRight = true;
+                                }
+                            }
+
+                            if (takeRight == null)//if this is the right most node, or there wasn't any left sibling with >1 keys
+                            {
+                                if (edgePos > 0)//use left sibling if it is not the left most node
+                                {
+                                    sibling = parent.GetEdge(edgePos - 1);
+                                    if (sibling.Keys.Count > 1)
+                                    {
+                                        takeRight = false;//use left
+                                    }
+                                }
+                            }
+
+                            if (takeRight != null)//case 2a) perform rotation with sibling
+                            {
+                                ulong pK = 0;
+                                ulong sK = 0;
+
+                                if (takeRight.Value)//take from right sibling
+                                {
+                                    pK = parent.Pop(edgePos).Value;//take parent's key (corresponding to this edge)
+                                    sK = sibling.Pop(0).Value;//take sibling's left most key
+
+                                    if (sibling.Edges.Count > 0)
+                                    {
+                                        Node edge = sibling.RemoveEdge(0);//move left most edge
+                                        curr.InsertEdge(edge);
+                                    }
+                                }
+                                else//take from left sibling
+                                {
+                                    pK = parent.Pop(edgePos).Value;//take parent's key (corresponding to this edge)
+                                    sK = sibling.Pop(sibling.Keys.Count-1).Value;//take sibling's right most key
+
+                                    if (sibling.Edges.Count > 0)
+                                    {
+                                        Node edge = sibling.RemoveEdge(sibling.Edges.Count-1);//move right most edge
+                                        curr.InsertEdge(edge);
+                                    }
+                                }
+
+                                parent.Push(sK);
+                                curr.Push(pK);
+                            }
+                            else//case 2b) or 2c) no siblings with >1 keys available
+                            {
+                                ulong? pK = null;
+                                if(parent.Edges.Count>=2)//case 2b
+                                {
+                                    if (edgePos == 0)//if n is left most node, take parent's first key
+                                    {
+                                        pK = parent.Pop(0);
+                                    }
+                                    else if(edgePos == parent.Edges.Count)//if n is the right most node take parent's right most key
+                                    {
+                                        pK = parent.Pop(parent.Keys.Count-1);
+                                    }
+                                    else//take parent's middle key
+                                    {
+                                        pK = parent.Pop(1);
+                                    }
+
+                                    if (pK != null)
+                                    {
+                                        curr.Push(pK.Value);
+                                        Node sib=null;
+                                        if (edgePos !=parent.Edges.Count)//use right sibling if it is not the rightmost node
+                                        {
+                                            sib = parent.RemoveEdge(edgePos + 1);
+                                        }
+                                        else
+                                        {
+                                            sib = parent.RemoveEdge(parent.Edges.Count-1);
+                                        }
+
+                                        curr.Fuse(sib);
+                                    }
+                                }
+                                else//case 2c
+                                {
+                                    curr.Fuse(parent,sibling);
+                                    Root = curr;
+                                    parent = null;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                int rmPos = -1;
+                if ((rmPos = curr.HasKey(k)) >= 0)
+                {
+                    //if it is a leaf node, remove the key
+                    if(curr.Edges.Count==0)
+                    {
+                        if (curr.Keys.Count == 0)
+                        {
+                            parent.Edges.Remove(curr);
+                        }
+                        else
+                        {
+                            curr.Pop(rmPos);
+                        }
+
+                    }
+                    else//otherwise, repalce it with the next higher key
+                    {
+
+                    }
+
+                    curr = null;
+                }
+                else
+                {
+                    //not found, so we move down the tree
+                    int p = curr.FindEdgePosition(k);
+                    parent = curr;
+                    curr = curr.GetEdge(p);
                 }
             }
         }
@@ -99,9 +275,9 @@ namespace _234Tree
                     //because for every node, it can possibly have more edges than key
                     //if the current index corresponds to a key, we want to add the key into the list.
                     //else we just want to traverse it's edges.
-                    if (curr.Item2 < currNode.KeyCount)
+                    if (curr.Item2 < currNode.Keys.Count)
                     {
-                        items.Add(currNode.Keys[curr.Item2].Value);
+                        items.Add(currNode.Keys[curr.Item2]);
                         curr = new Tuple<Node, int>(currNode, curr.Item2 + 1);
                     }
                     else

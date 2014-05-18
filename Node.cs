@@ -8,40 +8,24 @@ namespace _234Tree
 {
     public class Node
     {
-        public ulong?[] Keys { get; private set; }
-        Node[] _edges;
-        public int KeyCount { get; private set; }
-        public int EdgesCount { get; private set; }        
+        public List<Node> Edges { get; private set; }
+        public List<ulong> Keys { get; private set; }
 
         public Node(ulong key)
         {
             //using a fixed array is more conveinient but wasteful as we need a little more loops to compare and reshuffle the keys and edges
-            Keys = new ulong?[]{key,null,null};
-            _edges = new Node[] { null, null, null, null };
-            KeyCount = 1;
+            Keys = new List<ulong>();
+            Keys.Add(key);
+            Edges = new List<Node>();
         }
 
         /// <summary>
-        /// Find if the position of the key
+        /// Finds a key's position if it exists
         /// </summary>
-        /// <param name="k">the key value to find</param>
-        /// <returns>return -1 if not found or 0,1,2 respectively</returns>
-        public int FindKeyPosition(ulong k)
-        {
-            for (int x = 0; x < 3; x++)
-            {
-                if(Keys[x] == k)
-                {
-                    return x;
-                }
-            }
-
-            return -1;
-        }
-
+        /// <returns>Key position 0,1 or 2 if found, otherwise -1</returns>
         public int HasKey(ulong k)
         {
-            for (int x = 0; x < KeyCount; x++)
+            for (int x = 0; x < Keys.Count; x++)
             {
                 if(Keys[x]==k)
                 {
@@ -51,86 +35,147 @@ namespace _234Tree
 
             return -1;
         }
-        public void SetEdge(int position,Node edge)
+        
+        public void InsertEdge(Node edge)
         {
-            //shift all the previous positions by 1
-
-            bool hasEmptySlot = false;
-            if(_edges[position]!=null)
+            for (int x = 0; x < Edges.Count;x++ )
             {
-                for (int x = 3; x > position && x > 0 ; x--)
+                if(Edges[x].Keys[0]>edge.Keys[0])
                 {
-                    if (_edges[x]==null)
-                    {
-                        hasEmptySlot = true;
-                    }
-                    _edges[x] = _edges[x - 1];
+                    Edges.Insert(x, edge);
+                    return;
                 }
             }
-            else
-            {
-                hasEmptySlot = true;
-            }
+            Edges.Add(edge);
+        }
 
-            if (hasEmptySlot)
+        public Node RemoveEdge(int position)
+        {
+            Node edge = null;
+            if(Edges.Count>position)
             {
-                EdgesCount++;
+                edge = Edges[position];
+                Edges.RemoveAt(position);
             }
-            _edges[position] = edge;
+            return edge;
         }
 
         public Node Traverse(ulong k)
         {
             int pos=FindEdgePosition(k);
-            return _edges[pos];
-        }
-        public Node GetEdge(int position)
-        {
-            if (position < _edges.Length)
+
+            if (pos < Edges.Count && pos>-1)
             {
-                return _edges[position];
+                return Edges[pos];
             }
             else
             {
                 return null;
             }
         }
+        public Node GetEdge(int position)
+        {
+            if (position < Edges.Count)
+            {
+                return Edges[position];
+            }
+            else
+            {
+                return null;
+            }
+        }
+        /// <summary>
+        /// Find the position (edge) where k's value falls between 2 keys.
+        /// </summary>
+        /// <param name="k"></param>
+        /// <returns>0,1,2 or 3, unless one of the keys equals k, returns -1</returns>
         public int FindEdgePosition(ulong k)
         {
-            //1. left most key will never be null
-            //2. if the right key from the current key is null, return the left edge of the current key
-            //3. if k is in between left value (which starts at 0) and current key return the left edge of current key
-
-            ulong leftVal = 0;
-
-            for (int x = 0; x < 3; x++)
+            if (Keys.Count != 0)
             {
-
-                if (Keys[x] == null)
+                ulong left = 0;
+                for (int x = 0; x < Keys.Count; x++)
                 {
-                    if(leftVal<k)
+                    if (left <= k && k < Keys[x])
                     {
                         return x;
                     }
                     else
                     {
-                        return x - 1;
+                        left = Keys[x];
                     }
                 }
-                else if (leftVal <= k && k <= Keys[x])
+
+                if (k > Keys[Keys.Count - 1])
                 {
-                    return x;
+                    return Keys.Count;
                 }
-
-                leftVal = Keys[x].Value;
+                else
+                {
+                    return -1;
+                }
             }
-
-            if (Keys[2].Value < k)
+            else
             {
-                return 3;
+                return 0;
+            }
+        }
+
+        public void Fuse(Node n1)
+        {
+            int totalKeys = n1.Keys.Count;
+            int totalEdges=n1.Edges.Count;
+
+            totalKeys += this.Keys.Count;
+            totalEdges += this.Edges.Count;
+
+            if(totalKeys>3)
+            {
+                throw new InvalidOperationException("Total keys of all nodes exceeded 3");
             }
 
-            return -1;
+            
+            if(totalEdges>4)
+            {
+                throw new InvalidOperationException("Total edges of all nodes exceeded 4");
+            }
+
+
+            for (int x = 0; x < n1.Keys.Count; x++)
+            {
+                ulong k = n1.Keys[x];
+                this.Push(k);
+            }
+
+            for (int x = Edges.Count - 1; x >= 0; x--)
+            {
+                Node e = n1.RemoveEdge(x);
+                this.InsertEdge(e);
+            }
+        }
+
+        public void Fuse(Node n1,Node n2)
+        {
+            int totalKeys = n1.Keys.Count;
+            int totalEdges = n1.Edges.Count;
+
+            totalKeys += n2.Keys.Count;
+            totalEdges += n2.Edges.Count;
+            totalKeys += this.Keys.Count;
+            totalEdges += this.Edges.Count;
+            
+            if (totalKeys > 3)
+            {
+                throw new InvalidOperationException("Total keys of all nodes exceeded 3");
+            }
+
+            if (totalEdges > 4)
+            {
+                throw new InvalidOperationException("Total edges of all nodes exceeded 4");
+            }
+
+            this.Fuse(n1);
+            this.Fuse(n2);
         }
         
         /// <summary>
@@ -139,37 +184,26 @@ namespace _234Tree
         /// <returns>Restructured subtree by the order: left, right</returns>
         public Node[] Split()
         {
-            if(KeyCount!=2)
+            if(Keys.Count!=2)
             {
-                throw new InvalidOperationException(string.Format("This node has {0} keys, can only split a 2 keys node", KeyCount));
+                throw new InvalidOperationException(string.Format("This node has {0} keys, can only split a 2 keys node", Keys.Count));
             }
 
-            Node newRight = new Node(Keys[1].Value);
-            newRight._edges[0] = this._edges[2];
-            newRight._edges[1] = this._edges[3];
+            Node newRight = new Node(Keys[1]);
 
-            this._edges[2] = null;
-            this._edges[3] = null;
-            Keys[1] = null;
-            Keys[2] = null;
-
-            this.KeyCount = 1;
-            this.EdgesCount = 0;
-
-            //counting edges
-            //a better solution is to use a byte and binary operations to represent and count edges
-            //e.g 1010 to represent left and middle right edges are occupied
-            for (int x = 0; x < 4;x++ )
+            for (int x = 2 ; x<Edges.Count ;x++ )
             {
-                if (newRight._edges[x] != null)
-                {
-                    newRight.EdgesCount++;
-                }
+                newRight.Edges.Add(this.Edges[x]);
+            }
 
-                if (this._edges[x] != null)
-                {
-                    this.EdgesCount++;
-                }
+            for (int x = Edges.Count-1; x >=2; x--)
+            {
+                this.Edges.RemoveAt(x);
+            }
+
+            for (int x = 1; x < Keys.Count;x++ )
+            {
+                Keys.RemoveAt(x);
             }
 
             return new Node[] { this, newRight };
@@ -177,23 +211,16 @@ namespace _234Tree
 
         public ulong? Pop(int position)
         {
-            if(KeyCount == 1)
+            if(Keys.Count == 1)
             {
                 throw new InvalidOperationException("Cannot pop value from a 1 key node");
             }
 
-            if (Keys[position] != null)
+            if (position<Keys.Count)
             {
-                ulong k = Keys[position].Value;
-                Keys[position] = null;
-
-                for (int x = position; x < KeyCount - 1; x++)//shift all values to the left
-                {
-                    Keys[x] = Keys[x + 1];
-                    Keys[x + 1] = null;
-                }
-
-                KeyCount--;
+                ulong k = Keys[position];
+                Keys.RemoveAt(position);
+                
                 return k;
             }
             
@@ -202,33 +229,44 @@ namespace _234Tree
 
         public void Push(ulong k)
         {
-            if(KeyCount==3)
+            if(Keys.Count==3)
             {
                 throw new InvalidOperationException("Cannot push value into a 3 keys node");
             }
 
-            int pos=FindEdgePosition(k);
-            if (pos == 0)//left
+            if (Keys.Count == 0)
             {
-                this.Keys[2] = this.Keys[1];
-                this.Keys[1] = this.Keys[0];
-                this.Keys[0] = k;
+                Keys.Add(k);
             }
-            else if(pos == 1)//middle
+            else
             {
-                this.Keys[2] = this.Keys[1];
-                this.Keys[1] = k;
+                ulong left = 0;
+                for (int x = 0; x < Keys.Count; x++)
+                {
+                    if (left <= k && k < Keys[x] )
+                    {
+                        Keys.Insert(x, k);
+                        return;
+                    }
+                    else
+                    {
+                        left = Keys[x];
+                    }
+                }
+                Keys.Add(k);
             }
-            else //right
-            {
-                this.Keys[2] = k;
-            }
-
-            KeyCount++;
         }
         public override string ToString()
         {
-            return string.Format(@"Node({0},{1},{2})", Keys[0],Keys[1],Keys[2]);
+            string comma = "";
+            StringBuilder sb = new StringBuilder();
+            for(int x=0;x<Keys.Count;x++)
+            {
+                sb.Append(comma + Keys[x]);
+                comma = ",";
+            }
+
+            return sb.ToString();
 
         }
     }
