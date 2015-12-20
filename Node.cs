@@ -10,7 +10,7 @@ namespace _234Tree
     {
         public List<Node> Edges { get; private set; }
         public List<ulong> Keys { get; private set; }
-
+        public Node Parent { get; set; }
         public Node(ulong key)
         {
             //using a fixed array is more conveinient but wasteful as we need a little more loops to compare and reshuffle the keys and edges
@@ -46,7 +46,14 @@ namespace _234Tree
                     return;
                 }
             }
+
             Edges.Add(edge);
+            edge.Parent = this;
+        }
+        
+        public bool RemoveEdge(Node n)
+        {
+            return Edges.Remove(n);
         }
 
         public Node RemoveEdge(int position)
@@ -55,8 +62,10 @@ namespace _234Tree
             if(Edges.Count>position)
             {
                 edge = Edges[position];
+                edge.Parent = null;
                 Edges.RemoveAt(position);
             }
+
             return edge;
         }
 
@@ -267,7 +276,6 @@ namespace _234Tree
             }
 
             return sb.ToString();
-
         }
     }
 }

@@ -230,11 +230,27 @@ namespace _234Tree
                         {
                             curr.Pop(rmPos);
                         }
-
                     }
-                    else//otherwise, repalce it with the next higher key
+                    else//otherwise, replace it with the next higher key
                     {
-
+                        Node successor = Min(curr.Edges[rmPos]);
+                        ulong sK = successor.Keys[0];
+                        if(successor.Keys.Count>1)
+                        {
+                            successor.Pop(0);
+                        }
+                        else
+                        {
+                            if (successor.Edges.Count == 0)//just remove it if it is leaf
+                            {
+                                Node p = successor.Parent;
+                                p.RemoveEdge(successor);
+                            }
+                            else
+                            {
+                                //not leaf so we have to rotate
+                            }
+                        }
                     }
 
                     curr = null;
@@ -293,5 +309,23 @@ namespace _234Tree
             return items.ToArray();
         }
 
+        public Node Min(Node n=null)
+        {
+            if(n==null)
+            {
+                n = Root;
+            }
+
+            Node curr=n;
+            if (curr != null)
+            {
+                while (curr.Edges.Count > 0)
+                {
+                    curr = curr.Edges[0];
+                }
+            }
+
+            return curr;
+        }
     }
 }
